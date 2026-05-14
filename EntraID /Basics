@@ -1,0 +1,111 @@
+1. Identity Basics (Core Concept)
+👉 Everything starts here:
+
+Identity = Who the user/system is
+Examples:
+Employee login (john@company.com)
+Application identity (service principal)
+
+
+IdP vs SP (Most IMPORTANT)
+
+IdP (Identity Provider) Authenticates user
+SP (Service Provider)   Application user accesses
+
+
+Real Azure Example
+
+Azure Entra ID = IdP
+Your internal app / Salesforce = SP
+
+👉 Flow:
+User opens app
+App redirects to Entra ID
+User logs in
+Entra sends token → app trusts it
+
+SSO (Single Sign-On)
+🔹 Beginner Understanding
+One login → access multiple apps
+
+
+✅ Real Example
+Employee logs into:
+Outlook
+Teams
+ServiceNow
+
+👉 Only logs in once using Entra ID
+
+Federation
+🔹 Simple Idea
+👉 Trust between identity systems
+
+✅ Real Example
+Your company uses Entra ID
+Vendor uses Okta
+
+👉 You configure federation:
+Your Entra trusts their Okta
+Now external users log into YOUR apps
+
+
+Azure Entra ID Deep Dive
+Learn:
+Users, Groups
+Enterprise Applications
+App Registrations
+Managed Identity
+RBAC (Role-Based Access Control)
+
+Real Production Flow (VERY IMPORTANT):
+Scenario:
+You integrate ServiceNow with Entra ID
+Steps:
+Create Enterprise App in Entra
+Configure SSO (SAML/OIDC)
+Assign users/groups
+Configure provisioning (SCIM)
+
+👉 Now:
+Login handled by Entra
+Access controlled centrally
+
+
+SAML              Legacy enterprise apps
+OIDC              Modern web/mobile apps
+OAuthAPI          authorization
+
+
+ User Lifecycle Management (Advanced View)
+🔹 Real Enterprise Setup
+
+HR system (Workday)
+Sync → Entra ID
+
+Flows:
+✅ Joiner
+Create user
+Assign license
+Add to groups
+
+✅ Mover
+Role change → permissions updated
+
+✅ Leaver
+Disable account
+revoke tokens
+remove access
+
+Multi-Tenant App (Azure Perspective)
+🔹 Real Example
+You build SaaS app:
+
+Step:
+Register app in Entra
+Enable multi-tenant
+External companies can login
+
+👉 Used in:
+SaaS platforms
+B2B collaboration
