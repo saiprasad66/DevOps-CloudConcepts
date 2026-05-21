@@ -1,0 +1,103 @@
+🔷 1. VM (Virtual Machine) OS / Platform Upgrade
+✅ What is upgraded?
+OS image (Ubuntu → newer version)
+Patching (security updates)
+VM size / disk
+
+🔧 How upgrade happens
+✅ Case 1: In-place OS update (minor updates)
+Inside VM:
+sudo apt update && sudo apt upgrade
+👉 Terraform NOT involved
+👉 OS patched manually or via automation (Azure Update Manager)
+
+✅ Case 2: Recreate VM (Image change)
+Terraform:
+Terraformsource_image_reference {  publisher = "Canonical"  offer     = "UbuntuServer"  sku       = "20_04-lts"   # changed to 22_04}``Show more lines
+Plan:
+-/+ azurerm_linux_virtual_machine
+(forces replacement)
+
+
+🚀 Real Production Approach
+❌ Don’t recreate directly (downtime)
+✅ Use Rolling / Blue-Green
+✔️ Enterprise way:
+
+Create new VM with new OS
+Attach to Load Balancer
+Shift traffic gradually
+Delete old VM
+
+
+🔷 2. AKS (Kubernetes) Upgrade
+✅ What is upgraded?
+
+Kubernetes version
+Node OS image
+Node pools
+
+
+🔧 How upgrade happens
+Terraform:
+Terraformresource "azurerm_kubernetes_cluster" "aks" {  kubernetes_version = "1.29.0"}Show more lines
+
+🚀 What Azure DOES internally
+✅ AKS performs rolling upgrade automatically
+Steps:
+
+Add new node with new version
+Drain old node (evict pods)
+Move pods to new node
+Delete old node
+
+
+✅ Zero Downtime (if app is configured correctly)
+Requirements:
+
+Multiple replicas (pods)
+PodDisruptionBudget
+Readiness/Liveness probes
+
+
+⚠️ Risk if not configured
+
+Single pod app → downtime
+No health checks → failures
+
+
+🔷 3. App Service Upgrade
+✅ What is upgraded?
+
+Runtime (Node, .NET, Java)
+App Service Plan SKU
+OS (Windows/Linux)
+
+
+🔧 Terraform Example
+Terraformsite_config {  linux_fx_version = "NODE|18-lts"}Show more lines
+
+🚀 How upgrade happens
+✅ In-place (default)
+
+App restarts
+New runtime applied
+
+
+✅ Production method: Deployment Slots
+👉 This is VERY important in enterprise
+Steps:
+
+Create staging slot
+Deploy new version there
+Test application
+Swap slots
+
+Shellaz webapp deployment slot swap``Show more lines
+✅ Result:
+ZERO downtime
+
+Resource    UpgradeType        Strategy
+VM          OS / image         Recreate + Rolling
+AKS         Version /node      Rolling (automatic)
+App Service  Runtime           In-place / Slot swap
