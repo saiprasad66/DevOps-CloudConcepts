@@ -1,0 +1,272 @@
+ What is ARM?
+ARM (Azure Resource Manager) is the deployment system used to:
+Create
+Update
+Delete Azure resources
+
+It works via:
+ARM templates (JSON)
+Terraform (uses ARM APIs under the hood)
+
+🔄 What is an “ARM Upgrade”?
+An ARM upgrade means making changes to existing Azure infrastructure managed through ARM
+
+🔧 Examples of ARM Upgrades
+✅ 1. Resource Configuration Upgrade
+
+Increase VM size:
+Standard_DS2 → Standard_DS3
+Change App Service Plan SKU:
+S1 → P1v3
+Upgrade Storage performance tier:
+Standard → Premium
+
+✅ 2. Security / Compliance Upgrade
+
+Enable private endpoints
+Restrict public access
+Upgrade TLS version (e.g., TLS 1.0 → 1.2)
+
+
+✅ 3. Platform / Version Upgrade
+
+AKS Kubernetes version upgrade
+App Service runtime version change
+OS image upgrade in VM
+
+
+✅ 4. Networking Changes
+
+Modify NSG rules
+Add load balancer
+Update subnet configuration
+
+
+✅ 5. Provider / API Upgrade (Terraform Side)
+
+Upgrade Terraform provider:
+
+terraform init -upgrade
+
+Moves to newer ARM API versions internally
+
+
+🧠 How ARM Upgrade Happens (Behind the scenes)
+When you run:
+terraform apply
+👉 Terraform:
+Compares current state vs desired state
+Calls Azure ARM APIs
+Applies changes incrementally
+
+
+🔁 Types of ARM Upgrades
+✅ In-place Update (Safe)
+Resource stays same, only config changes
+Example:
+Increase storage quota
+
+⚠️ Recreate (Risky Upgrade)
+Resource is destroyed and recreated
+
+Example:
+Changing storage account replication type (sometimes)
+Changing resource name
+
+⚠️ Risk:
+Data loss
+Downtime
+
+
+✅ Rolling Upgrade
+Used for:
+VMSS
+AKS nodes
+Gradually replaces instances
+
+✅ Blue-Green Upgrade
+New infra created
+Traffic switched later
+
+Used in enterprise production
+
+🔍 Why ARM Upgrades Are Important
+Improve performance
+Enhance security
+Adopt latest Azure features
+Meet compliance requirements
+Fix deprecated configurations
+
+
+⚠️ Key Risks in ARM Upgrades
+Accidental resource deletion
+owntime
+Data loss (especially storage, DB)
+Dependency break (apps losing connection)
+Downtime
+Data loss (especially storage, DB)
+Dependency break (apps losing connection)
+
+
+##########Quick Cheat Sheet: Azure Resources (What Causes Recreate)###########################
+
+👉 Rule: If Terraform shows “forces replacement”, the resource will be destroyed & recreated.
+🔴 HIGH-RISK (Avoid Recreate – Data Loss Possible)
+🗄️ Storage Account
+Forces recreate if you change:
+name
+location
+account_kind (StorageV2 → BlobStorage)
+Some replication changes (LRS ↔ GRS in certain cases)
+
+✅ Safe changes:
+Tags
+Network rules
+TLS version
+
+
+🛢️ Azure SQL / Databases
+Forces recreate:
+Server name
+Collation
+Region
+
+✅ Safe:
+Scaling (DTU/vCore)
+Backup retention
+
+🔐 Key Vault
+Forces recreate:
+Name
+Region
+Soft-delete settings (older configs)
+
+✅ Safe:
+Access policies
+
+
+
+🟡 MEDIUM RISK
+💻 Virtual Machines
+May recreate if:
+OS disk change
+Image change
+
+✅ In-place:
+VM size (sometimes restart required)
+
+
+⚙️ App Service
+Forces recreate:
+Name (hostname tied)
+
+✅ In-place:
+Scaling plan
+App settings
+
+
+🟢 LOW RISK (Rolling Supported)
+☸️ AKS Cluster
+✅ Uses rolling upgrade:
+
+Node pool upgrade
+Kubernetes version
+
+❌ Recreate if:
+Cluster name
+Region
+
+
+📦 VM Scale Set (VMSS)
+✅ Rolling update:
+Image upgrade
+Instance update
+
+🌐 Load Balancer / Networking
+✅ Mostly in-place:
+
+NSG rules
+Backend pool updates
+
+⚠️ Recreate if:
+Changing subnet CIDR
+Major structural changes
+
+
+💥 2. Real Failure Scenario (VERY IMPORTANT – Interview Gold)
+🔴 Scenario: Storage Account Got Deleted in Production
+🎯 Situation:
+Engineer changed this in Terraform:
+Terraformname = "newstorageprod123"Show more lines
+🔎 What Terraform Plan Showed:
+-/+ azurerm_storage_account.prod
+(forces replacement)
+
+❌ Mistake:
+
+Engineer ignored plan
+Ran:
+
+Shellterraform applyShow more lines
+
+💣 What Happened:
+
+Old storage account deleted
+New storage created
+✅ Infra succeeded…
+❌ ALL DATA LOST
+❌ Applications failed (no blobs/files)
+
+
+🔥 Impact:
+
+Web apps crashed
+Data permanently lost (no backup)
+Sev-1 incident
+
+
+✅ Root Cause:
+
+Didn’t review terraform plan
+No backup strategy
+No blue-green approach
+
+
+✅ Correct Approach (What SHOULD be done):
+
+Create new storage account
+Copy data:
+
+Shellazcopy copy ...Show more lines
+
+Update app connection string
+Test application
+Remove old storage later
+
+👉 This is called Blue-Green Strategy
+
+
+######################### Decision Tree (SUPER EASY TO MEMORIZE)#############################
+
+                  │
+        Run terraform plan
+                  │
+     ┌────────────┴────────────┐
+     │                         │
+  In-place (~)           Recreate (-/+)
+     │                         │
+ ✅ Apply safely       Is downtime OK?
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+                 YES ✅                NO ❌
+                    │                     │
+           Direct apply           Is resource stateless?
+                                      │
+                              ┌───────┴────────┐
+                              │                │
+                           YES ✅           NO ❌
+                              │                │
+                        Recreate         Use Blue-Green
+                                          OR Rolling
+
