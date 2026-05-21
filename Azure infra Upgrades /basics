@@ -1,0 +1,148 @@
+In Azure infra (via Terraform), upgrades can involve:
+
+Resource configuration change (SKU, size, TLS version, etc.)
+Azure API / provider upgrade (azurerm version)
+OS / platform upgrade (VM, AKS, App Service)
+Security changes (network rules, access policies
+
+✅ 2. PRE-UPGRADE CHECKLIST (Very Important)
+🔍 A. Terraform-Level Checks
+Run:
+terraform init -upgrade
+terraform planShow more lines
+Check:
+
+❌ Any resource marked for destroy
+⚠️ Any force replacement
+✅ Only expected changes
+
+C. Dependency Check
+Example:
+
+Storage account → used by:
+App Service
+Functions
+AKS
+Diagnostic logs
+
+
+✅ Validate:
+No breaking dependency
+No change in resource ID
+
+🔍 D. Service-Specific Checks
+✅ Storage Account (very critical)
+Before upgrading:
+
+Check redundancy:
+LRS / GRS / ZRS
+Check:
+Private endpoints
+Firewall rules
+Access keys (used anywhere?)
+
+
+Check:
+Blob lifecycle policies
+TLS version
+
+Confirm:
+No accidental recreation
+
+⚠️ Risk:
+Changing name, kind, or replication → forces recreation (DATA LOSS RISK)
+
+✅ Networking
+
+VNets / Subnets:
+Any CIDR change? (very risky)
+
+NSGs:
+Rules not blocking production traffic
+Private endpoints:
+Still mapped correctly
+
+✅ Compute (VM / VMSS / AKS)
+Check:
+Scaling behavior
+OS / image version
+
+For AKS:
+Node pool upgrade strategy
+Pod disruption budget
+
+✅ Identity & Access
+Managed identities intact?
+RBAC roles unchanged?
+Key Vault access working?
+
+
+✅ Monitoring & Logs
+Diagnostic settings still configured?
+Log Analytics workspace connected?
+
+🎯 Upgrade Patterns
+✔️ Safe (In-place)
+SKU upgrade (Storage, App Service)
+TLS version update
+
+✔️ Rolling Upgrade
+VMSS upgrade
+AKS node pool upgrade
+
+✔️ Blue-Green (HIGHLY USED)
+Create new infra
+Switch traffic
+Alerts preserved?
+
+
+4. POST-UPGRADE CHECKS (Critical)
+After upgrade, engineers verify EVERYTHING 👇
+🔍 A. Terraform Validation
+
+Run again:
+
+terraform plan
+✅ Expect:
+No changes (clean state)
+
+
+🔍 B. Resource Health Check (Azure Portal / CLI)
+✅ Storage Account
+Accessible?
+Blob read/write working?
+Private endpoint working?
+Firewall rules intact?
+
+Test:
+Shellaz storage blob list ...Show more lines
+
+✅ App / API Layer
+Application up and running?
+No 5xx errors?
+Response time OK?
+
+
+✅ Networking
+DNS resolving correctly?
+Load balancer routing traffic?
+No blocked traffic?
+
+
+✅ Monitoring (VERY IMPORTANT for you 👇)
+
+Check:
+Logs ingestion
+Metrics continuity
+Alerts firing
+✅ Tools:
+Azure Monitor
+Dynatrace (check anomaly detection)
+
+
+✅ Security Validation
+RBAC access working?
+Key Vault secrets accessible?
+No unauthorized exposure?
+
+
