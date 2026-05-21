@@ -1,0 +1,193 @@
+💥 🔴 Real Failure Scenario
+🎯 Issue:
+After AKS upgrade:
+Pods are running ✅
+But application is failing ❌
+Errors:
+403 Forbidden
+Managed Identity authentication failed
+
+
+🧠 Root Cause (later found)
+👉 System-assigned identity lost access / token issues after upgrade
+🔍 Step-by-Step Debugging (Real Flow)
+
+✅ Step 1: Check Pods Status
+kubectl get pods -A
+✔️ Result:
+
+All pods = Running
+👉 ✅ Infra looks fine
+👉 ❌ Problem is deeper (app/identity)
+
+✅ Step 2: Check Application Logs
+kubectl logs <pod-name>
+🔴 Found error:
+Failed to get token from MSI endpoint
+Status: 403 Forbidden
+
+👉 ✅ Now we know:
+Identity or permission issue
+
+✅ Step 3: Verify AKS Identity Still Exists
+az aks show \  --name <cluster-name> \  --resource-group <rg>
+✔️ Check:
+JSON"identity": {  "type":Show more lines
+👉 ✅ Identity exists
+👉 ❌ But maybe permissions lost
+
+✅ Step 4: Check Role Assignments
+az role assignment list \  --assignee <principal-id>
+🔴 Found issue:
+
+Missing role:
+Storage Blob Data Contributor
+
+
+
+👉 🚨 This is common after upgrade or infra changes
+
+✅ Step 5: Re-Validate from Inside Pod
+Run:
+Shellkubectl exec -it <pod> -- curl http://169.254.169.254/metadata/identity/oauth2/token \  -H "Metadata:true"Show more lines
+✔️ Expected:
+
+Token returned
+
+🔴 Actual:
+
+Error / no token
+
+👉 ✅ Identity endpoint issue confirmed
+
+✅ Step 6: Check CSI / Identity Components
+kubectl get pods -n kube-system
+Look for:
+
+csi-azure
+aad-pod-identity (if used)
+workload-identity pods
+
+🔴 Found:
+
+One pod in:
+CrashLoopBackOff
+
+👉 ✅ Root cause deepens:
+Cluster components slightly misbehaving after upgrade
+
+✅ Step 7: Check Node Upgrade Behavior
+Shellkubectl get nodes -o wide``Show more lines
+✔️ Confirm:
+
+All nodes are 1.29
+No old nodes
+
+👉 ✅ Upgrade complete
+But:
+👉 ❌ Some DaemonSets not stabilized
+
+✅ Step 8: Fix the Problem
+✅ Fix 1: Re-assign Role
+az role assignment create \  --assignee <principal-id> \  --role "Storage Blob Data Contributor"
+
+✅ Fix 2: Restart Pods
+Shellkubectl delete pod <pod-name>``Show more lines
+👉 Forces:
+
+New token
+Fresh identity binding
+
+
+✅ Fix 3: Restart CSI / Identity Pods
+Shellkubectl rollout restart daemonset <csi-driver> -n kube-systemShow more lines
+
+✅ Step 9: Validate Again
+🔁 Check logs:
+Shellkubectl logs <pod>Show more lines
+✔️ Now:
+Token acquired successfully
+Connected to storage
+
+
+🔁 Functional test:
+Shellcurl https://app-url/healthShow more lines
+✔️ 200 OK ✅
+
+🎯 Final Root Cause Summary
+👉 After AKS upgrade:
+
+Node rotation happened ✅
+System identity remained ✅
+❌ Role assignment missing OR token refresh issue
+❌ CSI / identity component needed restart
+
+
+⚠️ Other REAL Failures You Might See
+
+🔴 Scenario 2: Pod CrashLoopBackOff
+Logs:
+exec format error
+
+👉 Cause:
+
+Image not compatible with new node OS
+
+✅ Fix:
+
+Rebuild image
+
+
+🔴 Scenario 3: Storage Mount Failure
+Error:
+mount error(13): Permission denied
+
+👉 Cause:
+
+Storage role missing
+
+✅ Fix:
+
+Reassign role + restart pod
+
+
+🔴 Scenario 4: Ingress Not Working
+👉 Symptom:
+
+App running but not reachable
+
+✅ Debug:
+kubectl get svc 
+kubectl get ingress
+👉 Cause:
+
+Ingress controller restarted or config mismatch
+
+
+✅ SIMPLE DEBUGGING FLOW (MEMORIZE)
+Pods Running?
+   ↓
+Check Logs
+   ↓
+Auth error?
+   ↓
+Check Identity
+   ↓
+Check Role Assignments
+   ↓
+Check CSI / kube-system pods
+   ↓
+Restart components
+   ↓
+Re-test app
+
+
+
+
+
+💡 Pro Insight (VERY IMPORTANT)
+👉 Most AKS upgrade failures are NOT cluster failures
+They are:
+Identity issues 🔐
+Storage access issues 💾
+Application compatibility ⚙️
