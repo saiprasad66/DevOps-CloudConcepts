@@ -1,0 +1,157 @@
+You upgraded AKS from 1.28 → 1.29, now the important part is:
+
+👉 How do you verify applications + system-assigned identity are working correctly?
+
+Let’s walk through a practical checklist used in enterprises 👇
+
+✅ 1. First: Understand What Actually Happened in Upgrade
+During AKS upgrade:
+New nodes (1.29) are created
+Pods are rescheduled
+Old nodes (1.28) are removed
+
+👉 So risks are:
+Pods not coming up properly
+App compatibility issues
+Identity/access failures
+
+
+🔍 2. POST-UPGRADE CHECKS (VERY IMPORTANT)
+🧱 A. Cluster Health Checks
+✅ Check nodes
+Shellkubectl get nodesShow more lines
+✔️ Expect:
+All nodes in Ready state
+All showing version 1.29
+
+✅ Check system pods
+Shellkubectl get pods -n kube-systemShow more lines
+✔️ Ensure:
+CoreDNS, kube-proxy, CSI drivers running
+No CrashLoopBackOff
+
+🚀 B. Application Health Checks
+✅ Check all application pods
+Shellkubectl get pods -A``Show more lines
+✔️ Look for:
+STATUS = Running
+READY = 1/1, 2/2
+
+
+✅ Check logs
+Shellkubectl logs <pod>Show more lines
+✔️ Look for:
+No errors after restart
+No dependency failures
+
+
+✅ Describe pod (VERY useful)
+Shellkubectl describe pod <pod-name>Show more lines
+Look for:
+Event errors
+Image pull issues
+Volume mount issues
+
+
+🌐 C. Application Functional Testing
+✅ Do real validation:
+Call APIs (Postman / curl)
+Access UI
+Run critical workflows
+
+✔️ Example:
+curl https://your-app-url/health``
+
+📦 D. Storage & Volume Checks
+👉 Very common failure area
+✅ Verify PVC
+Shellkubectl get pvcShow more lines
+✅ Verify mount inside pod
+kubectl exec -it <pod> -- ls /mnt/data
+✔️ Confirm:
+Data accessible
+No mount failure
+
+
+🔐 E. System Assigned Identity Checks (CRITICAL)
+This is what you specifically asked 👇
+
+✅ Step 1: Confirm identity still attached
+az aks show --name <cluster> --resource-group <rg>
+✔️ Check:
+
+identity.type = SystemAssigned
+
+
+✅ Step 2: Verify RBAC role still exists
+Example:
+laz role assignment list \  --assignee <principal-id>
+✔️ Ensure roles like:
+
+Storage Blob Data Contributor
+Key Vault access roles
+
+
+✅ Step 3: Test from inside pod
+If app accesses storage / Key Vault:
+Run inside pod:
+Shellkubectl exec -it <pod> -- curl <storage or kv endpoint>Show more lines
+✔️ Confirm:
+No 403 / auth errors
+
+
+✅ Step 4: Check workload identity / Managed Identity binding
+If using:
+AAD Pod Identity OR
+Workload Identity
+
+Check:
+kubectl get azureidentity
+kubectl get azureidentitybinding
+✔️ Ensure mapping exists
+
+✅ Step 5: Application logs (VERY IMPORTANT)
+Look for:
+Token failures
+MSI endpoint errors
+Access denied errors
+
+
+📊 F. Monitoring & Observability
+Since you mentioned Dynatrace earlier 👇
+✅ Check metrics:
+CPU spike?
+Pod restarts?
+Latency increase?
+
+✅ Check logs:
+Errors increased?
+Dependency failures?
+
+✅ Alerts:
+Any triggered after upgrade?
+
+
+✅ 4. SIMPLE CHECKLIST (MEMORIZE THIS)
+👉 After AKS upgrade, ALWAYS validate:
+✅ Infra
+Nodes upgraded
+System pods running
+
+✅ Applications
+Pods running
+Logs clean
+APIs working
+
+✅ Storage
+Volumes mounted
+Data accessible
+
+✅ Identity
+Managed identity attached
+Role assignments intact
+No auth errors in logs
+
+✅ Monitoring
+No spike in failures
+No alerts
