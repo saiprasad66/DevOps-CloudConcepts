@@ -343,3 +343,347 @@ AKS, Log Analytics, and Azure Monitor to provide deep visibility into applicatio
 | API Management  | telemetry integration     |
 | Service Fabric  | supported                 |
 | Static Web Apps | frontend telemetry        |
+
+-----------------------------------------------------------------------------------
+
+What Is Sampling in Application Insights / Observability?
+
+Sampling means:
+Collecting only a percentage of telemetry instead of collecting EVERYTHING.
+
+Used to reduce:
+storage cost
+ingestion cost
+network overhead
+performance impact
+
+WHY SAMPLING NEEDED?
+In large AKS/microservice environments:
+
+Imagine:
+100 microservices
+10k requests/sec
+
+If every:
+request
+trace
+dependency
+log
+
+is stored:
+Telemetry volume becomes HUGE.
+
+Example Without Sampling
+1 million requests/hour
+
+If every trace stored:
+massive storage
+high Azure Monitor ingestion cost
+slow queries
+WITH SAMPLING
+
+Collect only:
+
+10%
+
+Example:
+
+1,000,000 requests
+↓
+100,000 stored
+
+Still enough for:
+
+troubleshooting
+trends
+anomaly detection
+
+BUT much cheaper.
+
+VERY IMPORTANT UNDERSTANDING
+
+Sampling DOES NOT mean:
+
+randomly losing all visibility
+
+Modern sampling tries to preserve:
+
+distributed traces
+important failures
+representative telemetry
+TYPES OF SAMPLING
+1. FIXED-RATE SAMPLING
+
+Simple percentage.
+
+Example:
+
+Collect 10% telemetry
+Example
+
+1000 requests:
+
+store only 100
+2. ADAPTIVE SAMPLING (Very Common)
+
+Automatically adjusts sampling rate based on traffic volume.
+
+Example:
+
+Low traffic:
+
+collect 100%
+
+High traffic:
+
+collect 5%
+
+Very useful for enterprise systems.
+
+3. TRACE-BASED SAMPLING
+
+Important in distributed tracing.
+
+Ensures:
+
+entire request trace preserved
+
+instead of partial spans.
+
+Example
+
+Request flow:
+
+Frontend → Auth → Payment → DB
+
+Sampling ensures:
+
+whole transaction kept
+OR
+whole transaction dropped
+
+Not partial.
+
+Very important.
+
+HOW SAMPLING REDUCES COST
+
+Azure Monitor/App Insights pricing largely based on:
+
+data ingestion volume
+
+More telemetry:
+→ more GB/day
+→ more cost
+
+Example
+
+Without sampling:
+
+500 GB/day
+
+With 10% sampling:
+
+50 GB/day
+
+Huge savings.
+
+WHERE SAMPLING CONFIGURED?
+
+Depends on architecture.
+
+OPTION 1 — APPLICATION INSIGHTS SDK
+
+Very common.
+
+Java Example
+{
+  "sampling": {
+    "percentage": 10
+  }
+}
+.NET Example
+services.AddApplicationInsightsTelemetry();
+
+with adaptive sampling enabled.
+
+OPTION 2 — OPENTELEMETRY (Modern Enterprise)
+
+Very important.
+
+Configured in:
+
+OTel SDK
+OTel Collector
+Example OTel Collector
+processors:
+  probabilistic_sampler:
+    sampling_percentage: 10
+Flow
+Application
+↓
+OTel Collector
+↓
+Sampling applied
+↓
+Application Insights
+OPTION 3 — APPLICATION INSIGHTS AGENT
+
+Java agent supports sampling config.
+
+Example
+{
+  "sampling": {
+    "percentage": 20
+  }
+}
+HANDS-ON — AKS EXAMPLE
+Scenario
+
+Spring Boot app in AKS generating massive telemetry.
+
+Need:
+
+reduce cost
+keep observability
+Step 1 — Configure Sampling
+
+Inside:
+
+applicationinsights.json
+
+Add:
+
+{
+  "sampling": {
+    "percentage": 10
+  }
+}
+Step 2 — Mount Config In Pod
+
+Deployment YAML:
+
+volumeMounts:
+- mountPath: /agent/applicationinsights.json
+Step 3 — Deploy
+kubectl apply -f deployment.yaml
+Step 4 — Verify
+
+Generate traffic.
+
+Check:
+
+Application Insights
+→ Live Metrics
+
+Telemetry reduced.
+
+HOW TO VERIFY SAMPLING?
+
+Use KQL.
+
+Request Volume
+requests
+| summarize count()
+Compare:
+actual traffic
+stored telemetry
+VERY IMPORTANT ENTERPRISE STRATEGY
+
+Usually:
+
+normal requests sampled
+errors NOT sampled
+Why?
+
+You never want to lose:
+
+critical failures
+Example
+
+Successful requests:
+
+sampled at 10%
+
+Exceptions:
+
+100% retained
+
+Very common enterprise practice.
+
+REAL PRODUCTION EXAMPLE
+Problem
+
+Application Insights cost suddenly increased.
+
+Investigation
+
+Cause:
+
+high-volume health check telemetry
+
+Millions of requests/day.
+
+Solution
+enable adaptive sampling
+exclude noisy endpoints
+
+Result:
+
+70% ingestion reduction
+
+without losing important traces.
+
+VERY IMPORTANT SRE UNDERSTANDING
+
+Sampling is balance between:
+
+observability depth
+operational cost
+
+Too little sampling:
+
+high cost
+
+Too aggressive sampling:
+
+reduced troubleshooting capability
+COMMON INTERVIEW QUESTIONS
+Question
+
+Why is sampling important in Application Insights?
+
+Strong Answer
+
+Sampling helps reduce telemetry ingestion and storage costs by collecting only a representative subset of telemetry while still preserving sufficient observability for monitoring, troubleshooting, and distributed tracing.
+
+Question
+
+Where can sampling be configured?
+
+Strong Answer
+
+Sampling can be configured in Application Insights SDKs, Java agents, OpenTelemetry SDKs, or OpenTelemetry Collectors depending on the observability architecture used.
+
+Question
+
+What is adaptive sampling?
+
+Strong Answer
+
+Adaptive sampling dynamically adjusts telemetry collection rates based on traffic volume to control ingestion rates while maintaining observability quality.
+
+VERY SENIOR-LEVEL UNDERSTANDING
+
+In enterprise observability:
+
+Not all telemetry has equal value.
+
+Good SRE teams:
+
+reduce noisy telemetry
+retain critical traces/errors
+optimize ingestion costs
+maintain troubleshooting capability
+
+That is mature observability engineering thinking.
