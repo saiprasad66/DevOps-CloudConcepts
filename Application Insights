@@ -1,0 +1,345 @@
+What Is Application Insights?
+Azure’s Application Performance Monitoring (APM) solution.
+
+Used to monitor:
+application health
+performance
+failures
+dependencies
+user requests
+distributed tracing
+
+It is part of: azure Monitor
+
+WHAT IT COLLECTS
+
+| Telemetry     | Example             |
+| ------------- | ------------------- |
+| Requests      | API calls           |
+| Dependencies  | SQL/Redis/API calls |
+| Exceptions    | Java/.NET errors    |
+| Traces        | application logs    |
+| Metrics       | response time       |
+| Availability  | synthetic tests     |
+| User sessions | frontend usage      |
+
+Real Flow:
+Frontend
+↓
+API Gateway
+↓
+Auth Service
+↓
+Payment Service
+↓
+Postgres
+
+Application Insights traces:
+every request
+latency between services
+failed dependencies
+bottlenecks
+
+
+CORE CONCEPT — DISTRIBUTED TRACING
+
+VERY IMPORTANT.
+App Insights tracks:
+
+one request across multiple services
+
+using:
+Trace ID
+Span ID
+Example
+
+User API request:
+Frontend → API → Auth → DB
+
+App Insights shows:
+Auth took 5 sec
+DB query slow
+Redis timeout
+
+This is HUGE in SRE.
+
+HOW DATA FLOWS
+Application
+↓
+SDK/OpenTelemetry
+↓
+Application Insights
+↓
+Log Analytics Workspace
+↓
+Azure Monitor
+
+HOW TO ENABLE
+
+1. SDK-Based Instrumentation
+
+Most common.
+Example:
+Java SDK
+.NET SDK
+NodeJS SDK
+Example Java
+
+Add App Insights Java agent.
+
+Then telemetry auto-collected:
+
+requests
+exceptions
+dependencies
+2. OpenTelemetry (Modern Approach)
+
+VERY IMPORTANT FOR YOUR JD.
+
+Modern enterprises use:
+
+OpenTelemetry
+
+instead of vendor-specific SDKs.
+
+Flow
+Application
+↓
+OpenTelemetry SDK
+↓
+Azure Monitor Exporter
+↓
+Application Insights
+WHY OPENTELEMETRY IMPORTANT?
+
+Vendor-neutral observability.
+
+Can send telemetry to:
+Azure
+Dynatrace
+Grafana
+Jaeger
+IMPORTANT APPLICATION INSIGHTS COMPONENTS
+1. Requests
+
+Tracks:
+
+API calls
+response time
+success/failure
+Example KQL
+requests
+| order by timestamp desc
+2. Dependencies
+
+Tracks:
+
+SQL calls
+Redis
+external APIs
+Example
+Payment API slow because PostgreSQL query latency high.
+Query
+dependencies
+| where duration > 2s
+3. Exceptions
+
+Tracks:
+
+NullPointerException
+OutOfMemory
+timeout
+Query
+exceptions
+| order by timestamp desc
+4. Traces
+
+Application logs.
+
+Example
+User login failed
+Query
+traces
+| where message contains "error"
+5. Availability Tests
+
+Synthetic monitoring.
+
+Example
+
+Every 5 min:
+ping API
+validate login page
+VERY IMPORTANT — CONNECTION STRING
+
+Applications connect using:
+
+APPLICATIONINSIGHTS_CONNECTION_STRING
+Example
+export APPLICATIONINSIGHTS_CONNECTION_STRING=...
+REAL ENTERPRISE ARCHITECTURE
+AKS Microservices
+↓
+OpenTelemetry
+↓
+Application Insights
+↓
+Log Analytics Workspace
+↓
+Azure Monitor/Sentinel/Dashboards
+
+HOW APP INSIGHTS DIFFERS FROM AZURE MONITOR
+| Azure Monitor       | Application Insights   |
+| ------------------- | ---------------------- |
+| infra monitoring    | application monitoring |
+| VM metrics          | API metrics            |
+| platform telemetry  | request tracing        |
+| infrastructure logs | dependency visibility  |
+
+VERY IMPORTANT FOR SRE
+
+Application Insights helps:
+
+reduce MTTR
+identify bottlenecks
+trace failures
+correlate dependencies
+REAL PRODUCTION SCENARIO
+Scenario
+
+Users report:
+
+Checkout API slow
+Investigation
+
+Application Insights shows:
+
+request latency increased
+dependency latency high
+PostgreSQL query taking 8 sec
+Root Cause
+
+Missing DB index.
+
+Fix
+add index
+reduce query latency
+response improved
+THIS IS HOW SENIOR SRES THINK
+
+Not:
+
+restart pod
+
+But:
+
+follow trace → identify bottleneck → stabilize → prevent recurrence
+LIVE INTERVIEW SCENARIO
+Question
+
+How would you debug latency in microservices?
+
+Strong Answer
+
+I would use distributed tracing in Application Insights or Dynatrace to follow the request path 
+across services, analyze dependency latency, correlate logs and metrics, identify bottlenecks 
+such as slow database queries or external APIs, stabilize the service, and
+then implement preventive monitoring and optimization.
+
+Excellent senior answer.
+
+IMPORTANT CONCEPT — SAMPLING
+
+Large-scale apps generate huge telemetry.
+
+Application Insights uses:
+
+sampling
+
+to reduce:
+
+ingestion cost
+storage overhead
+TYPES OF ALERTS
+
+Can alert on:
+
+response time
+failure rate
+dependency failure
+exception spikes
+EXAMPLE ALERT
+API latency > 2 sec
+
+trigger:
+
+Teams alert
+PagerDuty
+incident
+KQL EXAMPLES
+Failed Requests
+requests
+| where success == false
+Top Exceptions
+exceptions
+| summarize count() by type
+Slow Dependencies
+dependencies
+| where duration > 5s
+Request Rate
+requests
+| summarize count() by bin(timestamp, 5m)
+
+VERY COMMON INTERVIEW QUESTIONS
+Q1. Difference between Azure Monitor and Application Insights?
+
+Strong Answer:
+
+Azure Monitor focuses on infrastructure and platform telemetry,
+while Application Insights provides application-level observability including request tracing,
+dependency monitoring, exception tracking, and distributed tracing.
+
+Q2. What is distributed tracing?
+
+Distributed tracing tracks a single transaction across multiple microservices using trace IDs and spans,
+helping identify latency bottlenecks and failures across distributed systems.
+
+Q3. How does App Insights integrate with AKS?
+
+Applications running in AKS use SDKs or OpenTelemetry exporters to send telemetry to Application Insights 
+for centralized application observability.
+
+Q4. What are dependencies in App Insights?
+
+Dependencies represent external calls made by applications such as databases, REST APIs, Redis,
+or message queues, including latency and success/failure information.
+
+VERY IMPORTANT SENIOR-LEVEL UNDERSTANDING
+
+Application Insights is NOT just logging.
+
+It is:
+
+end-to-end application observability
+
+That distinction matters heavily in SRE interviews.
+
+FINAL ENTERPRISE-LEVEL SUMMARY
+
+Application Insights is Azure’s application observability platform
+used for monitoring distributed applications, APIs, dependencies, exceptions, and 
+end-user experience. In enterprise environments it integrates with OpenTelemetry, 
+AKS, Log Analytics, and Azure Monitor to provide deep visibility into application performance, request flows, and dependency health, helping SRE teams reduce MTTR and improve reliability.
+----------------------------------------------------------------------------
+
+| Resource Type   | App Insights Capability   |
+| --------------- | ------------------------- |
+| App Service     | Native                    |
+| AKS             | App-level instrumentation |
+| Functions       | Native                    |
+| VM-hosted apps  | SDK/OpenTelemetry         |
+| Container Apps  | Native integration        |
+| Logic Apps      | Partial monitoring        |
+| API Management  | telemetry integration     |
+| Service Fabric  | supported                 |
+| Static Web Apps | frontend telemetry        |
