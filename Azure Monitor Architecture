@@ -1,0 +1,318 @@
+A VM in Subscription-A can send logs to a Log Analytics Workspace in Subscription-B.
+This is VERY common in enterprises.
+You do NOT need separate workspaces per subscription.
+
+REAL ENTERPRISE THINKING
+Large organizations usually have:
+Many subscriptions
+Many resource groups
+Many AKS clusters
+Many VMs
+Many environments
+
+If each resource has separate workspace:
+monitoring chaos
+difficult querying
+expensive
+poor governance
+So enterprises centralize logs.
+
+REAL ENTERPRISE AZURE MONITOR ARCHITECTURE
+Usually looks like this:
+Production Subscription
+ ├── AKS
+ ├── VMs
+ ├── KeyVault
+ └── App Services
+         ↓
+
+NonProd Subscription
+ ├── AKS
+ ├── VMs
+ └── Databases
+         ↓
+
+Security Subscription
+ ├── Sentinel
+ ├── Defender
+ └── SIEM
+         ↓
+
+Central Monitoring Subscription
+ ├── Log Analytics Workspace
+ ├── Azure Monitor
+ ├── Sentinel
+ ├── Workbooks
+ └── Alerts
+
+WHY CENTRALIZED WORKSPACE?
+| Benefit               | Reason                 |
+| --------------------- | ---------------------- |
+| Central observability | all logs one place     |
+| Easier KQL queries    | cross-environment      |
+| Security analytics    | Sentinel integration   |
+| Governance            | standard monitoring    |
+| Cost optimization     | fewer workspaces       |
+| Easier alerting       | centralized alerts     |
+| Correlation           | infra + security + app |
+
+HOW CROSS-SUBSCRIPTION WORKS?
+
+Azure Monitor is NOT limited to same subscription.
+
+DCR can send logs across subscriptions if:
+proper RBAC exists
+network access exists
+supported region alignment
+
+HOW ENTERPRISES ORGANIZE WORKSPACES?
+There are several patterns.
+
+PATTERN 1 — CENTRALIZED WORKSPACE (Most Common)
+One central workspace.
+All subscriptions send logs there.
+
+Used for:
+enterprise monitoring
+Sentinel
+SOC
+centralized SRE
+
+PATTERN 2 — ENVIRONMENT-BASED
+prod-workspace
+nonprod-workspace
+Common for:
+compliance
+access separation
+
+PATTERN 3 — REGION-BASED
+US workspace
+Europe workspace
+Used for:
+data residency
+GDPR
+PATTERN 4 — BUSINESS UNIT BASED
+Example:
+finance-law
+retail-law
+security-law
+
+MOST COMMON REAL ENTERPRISE DESIGN
+
+Usually:
+1 production workspace
+1 non-production workspace
+1 security workspace
+
+REAL ENTERPRISE MONITORING FLOW:
+
+Infrastructure Logs
+Collected using:
+AMA
+Diagnostic settings
+
+Application Logs
+Collected using:
+Application Insights
+OpenTelemetry
+
+Security Logs
+collected using:
+Defender
+Sentinel connectors
+--------------------------------------------------------------------------------------
+
+“How does telemetry physically/network-wise move from one subscription
+resource to another subscription workspace?”
+
+VERY IMPORTANT UNDERSTANDING
+
+Cross-subscription does NOT automatically mean:
+VNet peering required
+private connectivity required
+
+Usually Azure Monitor traffic goes through:
+
+Azure control plane / Azure Monitor public endpoints
+
+NOT directly VM-to-workspace private IP communication.
+
+What Happens Internally?
+
+AMA agent inside VM:
+collects logs
+securely sends telemetry over HTTPS
+to:
+Azure Monitor ingestion endpoints
+
+Azure backend routes data into correct workspace.
+
+NETWORK FLOW
+VM
+↓
+Azure Monitor Agent
+↓
+HTTPS 443
+↓
+Azure Monitor Ingestion Endpoint
+↓
+Workspace
+
+
+IMPORTANT NETWORKING CONCEPT
+Subscription Is NOT Network Boundary
+
+This is VERY important.
+
+People confuse:
+
+Subscription
+
+with:
+
+Network isolation
+
+They are different.
+
+Subscription = Management/Billing Boundary
+
+NOT network boundary.
+
+Networking Actually Controlled By
+VNet
+NSG
+Firewall
+UDR
+Private Endpoint
+DNS
+So Cross-Subscription Telemetry Works Because
+
+Azure Monitor service is global Azure-managed platform service.
+
+As long as:
+authentication valid
+RBAC valid
+outbound connectivity exists
+
+logs can flow.
+ENTERPRISE NETWORKING ARCHITECTURE
+
+Very commonly:
+
+Spoke Subscription A
+Spoke Subscription B
+Spoke Subscription C
+         ↓
+Hub Network
+         ↓
+Central Monitoring
+
+But Telemetry Usually Still Uses Azure Monitor Endpoints
+
+NOT direct workspace IP communication.
+
+HOW SECURITY WORKS?
+
+AMA authenticates using:
+
+Managed Identity
+OR
+Azure AD tokens
+
+Then Azure validates:
+
+DCR permissions
+workspace permissions
+
+before accepting logs.
+
+IMPORTANT ENTERPRISE SECURITY TOPICS
+1. Private Link / Azure Monitor Private Link Scope (AMPLS)
+
+Large enterprises may NOT allow public internet telemetry.
+
+Then they use:
+
+Azure Monitor Private Link Scope
+
+This enables:
+
+private telemetry ingestion
+
+through private endpoints.
+
+Architecture
+VM
+↓
+Private Endpoint
+↓
+Azure Monitor Private Link
+↓
+Workspace
+
+Used in:
+
+banks
+fintech
+healthcare
+
+VERY possible at SimCorp.
+
+2. Firewall Rules
+
+Need to allow:
+
+AzureMonitor service tag
+AzureActiveDirectory endpoints
+3. Proxy Support
+
+AMA can work behind enterprise proxies.
+
+HOW TO VERIFY CONNECTIVITY?
+DNS Resolution
+nslookup <monitor endpoint>
+HTTPS Connectivity
+curl https://<endpoint>
+Agent Logs
+
+Linux:
+
+/var/opt/microsoft/azuremonitoragent/log/
+VERY IMPORTANT INTERVIEW QUESTION
+Question
+
+How can VM in one subscription send logs to workspace in another subscription?
+
+Strong Answer
+
+Azure Monitor telemetry is sent through Azure Monitor ingestion endpoints over HTTPS rather
+than direct subscription-level communication. Azure Monitor Agent authenticates using 
+Azure AD identities and sends telemetry based on Data Collection Rule configuration 
+into the target Log Analytics Workspace, even across subscriptions, 
+provided RBAC permissions and network access are properly configured.
+
+That is a VERY strong senior answer.
+
+REAL ENTERPRISE MONITORING NETWORK DESIGN
+
+Most enterprises use:
+| Component            | Design                            |
+| -------------------- | --------------------------------- |
+| Central workspace    | dedicated monitoring subscription |
+| AMA                  | on VMs/AKS                        |
+| DCR                  | centralized policy                |
+| Private Link         | secure telemetry                  |
+| Sentinel             | centralized SIEM                  |
+| RBAC                 | controlled access                 |
+| Hub-spoke networking | enterprise connectivity           |
+
+IMPORTANT DIFFERENCE
+
+| Concept                 | Meaning                     |
+| ----------------------- | --------------------------- |
+| Cross-subscription      | management separation       |
+| Cross-network           | VNet communication          |
+| Azure Monitor ingestion | Azure service communication |
+
+These are different things.
+
