@@ -1,0 +1,260 @@
+Azure Monitor does NOT automatically collect every log from every Azure resource by default.
+
+Collection depends on:
+diagnostic settings
+agent configuration
+enabled integrations
+retention settings
+workspace configuration
+
+Azure Monitoring Architecture:
+Azure Resource
+↓
+Diagnostic Settings / Agent
+↓
+Log Analytics Workspace
+↓
+Azure Monitor / Sentinel / Alerts / Dashboards
+
+VERY IMPORTANT DIFFERENCE
+1. Azure Activity Logs
+
+Automatically available.
+
+Tracks:
+resource creation
+deletion
+RBAC changes
+deployments
+
+Example:
+Who deleted VM?
+Who modified NSG?
+
+2. Resource Logs (Diagnostic Logs)
+
+NOT always enabled by default.
+
+Need:
+
+Diagnostic Settings
+
+to send logs to:
+Log Analytics
+Storage Account
+Event Hub
+Example
+
+AKS logs:
+kube-audit
+kube-apiserver
+container insights
+
+Need explicit configuration.
+
+
+3. VM Logs
+Need:
+Azure Monitor Agent (AMA)
+OR
+legacy Log Analytics agent
+Without agent:
+No OS-level logs.
+
+Example
+Linux:
+/var/log/messages
+syslog
+
+Windows:
+Event Viewer logs
+Require agent collection.
+
+Enable VM Monitoring Using Azure Monitor + Diagnostic Settings
+There are 2 important things people confuse:
+| Feature                   | Purpose                             |
+| ------------------------- | ----------------------------------- |
+| Azure Activity Logs       | Azure resource operations           |
+| VM Monitoring/Diagnostics | OS/application-level logs & metrics |
+
+METHOD 1 — Enable VM Monitoring From Portal (Most Common)
+Step 1 — Create Log Analytics Workspace
+Go:
+Azure Portal
+→ Log Analytics Workspace
+→ Create
+
+Choose:
+subscription
+resource group
+region
+
+Step 2 — Open VM
+
+Go:
+
+Virtual Machine
+→ Monitoring
+→ Insights
+
+Click: Enable
+Azure automatically:
+installs Azure Monitor Agent
+links Log Analytics Workspace
+enables monitoring
+
+Step 3 — Configure Data Collection Rule (DCR)
+
+Choose what to collect:
+Linux:
+syslog
+CPU
+memory
+disk
+
+Windows:
+Event logs
+performance counters
+
+Step 4 — Verify Agent
+Inside VM:
+
+Linux:
+systemctl status azuremonitoragent
+
+Windows:
+Check:
+Azure Monitor Agent service
+
+Step 5 — Verify Logs
+
+Go:
+
+Azure Monitor
+→ Logs
+
+Example query:
+
+For heartbeat:
+Heartbeat
+| take 10
+
+For proper VM monitoring you usually configure:
+
+Azure Monitor Agent (AMA)
+Data Collection Rule (DCR)
+Diagnostic Settings (resource logs)
+Log Analytics Workspace
+
+| Feature                       | Azure Monitor Agent (AMA)      | Diagnostic Settings                  |
+| ----------------------------- | ------------------------------ | ------------------------------------ |
+| Purpose                       | Collect guest OS/app telemetry | Collect Azure resource/platform logs |
+| Installed where?              | Inside VM/AKS node             | Azure resource configuration         |
+| Collects OS logs?             | YES                            | NO                                   |
+| Collects app logs?            | YES                            | Limited/resource specific            |
+| Collects Azure activity logs? | NO                             | YES                                  |
+| Needs agent?                  | YES                            | NO                                   |
+| Sends to                      | Log Analytics via DCR          | Log Analytics/EventHub/Storage       |
+
+
+Interview Scenario
+Question
+
+VM logs not appearing in Azure Monitor. How do you troubleshoot?
+
+Strong Answer
+Step 1 — Check AMA Agent
+
+Linux:
+
+systemctl status azuremonitoragent
+
+Step 2 — Verify DCR Association
+
+Check:
+Data Collection Rule linked?
+correct workspace?
+
+Step 3 — Verify Network Connectivity
+
+VM should reach:
+Azure Monitor endpoints
+
+Step 4 — Verify Workspace
+
+Run:
+
+Heartbeat
+
+If no heartbeat:
+ingestion issue
+agent issue
+
+AMA = Inside the machineL:
+Linux syslog
+Windows event logs
+performance counters
+custom logs
+application telemetry
+
+Diagnostic Settings = Azure platform level
+
+resource logs
+activity logs
+AKS control plane logs
+KeyVault audit logs
+NSG flow logs
+
+| Resource        | Logs          |
+| --------------- | ------------- |
+| AKS             | kube-audit    |
+| KeyVault        | audit events  |
+| NSG             | flow logs     |
+| Azure Firewall  | firewall logs |
+| Storage Account | access logs   |
+| Load Balancer   | metrics       |
+
+Example
+KeyVault diagnostic settings:
+Collect:
+SecretGet
+SecretDelete
+authentication events
+
+Real Production Scenario
+Question
+VM CPU metrics visible but syslog missing. Why?
+
+Correct Analysis
+Likely:
+Diagnostic settings enabled
+BUT
+AMA/DCR not configured
+
+Another Scenario
+Question
+KeyVault audit logs missing.
+Correct Analysis
+Need:
+Diagnostic settings enabled on KeyVault
+AMA irrelevant here.
+
+| Capability          | AMA | Diagnostic Settings |
+| ------------------- | --- | ------------------- |
+| VM OS logs          | YES | NO                  |
+| Windows events      | YES | NO                  |
+| Syslog              | YES | NO                  |
+| App logs            | YES | LIMITED             |
+| Azure platform logs | NO  | YES                 |
+| KeyVault audit      | NO  | YES                 |
+| NSG flow logs       | NO  | YES                 |
+| Activity logs       | NO  | YES                 |
+| Needs agent         | YES | NO                  |
+
+
+
+
+
+
+
+
