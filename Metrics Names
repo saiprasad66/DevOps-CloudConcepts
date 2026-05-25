@@ -1,0 +1,261 @@
+In **Azure Monitor**, metrics are the core signals used to track health, performance, and availability of your infrastructure and applications.
+As a Senior SRE, interviewers expect you to know both **commonly used metrics** and **why they matter (Golden Signals mindset)**.
+
+***
+
+# ✅ 🔥 Most Common Azure Monitor Metrics (SRE Perspective)
+
+## 🟢 1. Compute (VM / Scale Sets)
+
+### ✅ CPU Metrics
+
+* `Percentage CPU`
+* `CPU Credits Remaining` (for burstable VMs)
+
+👉 Why important:
+
+* High CPU = load or infinite loops
+* Low CPU + high latency = bottleneck elsewhere
+
+***
+
+### ✅ Memory Metrics *(via Azure Monitor Agent)*
+
+* `Available Memory`
+* `Committed Memory`
+
+👉 Trick:
+Azure does NOT provide memory by default → needs agent
+
+***
+
+### ✅ Disk Metrics
+
+* `Disk Read Bytes/sec`
+* `Disk Write Bytes/sec`
+* `Disk Queue Depth`
+* `OS Disk Latency`
+
+👉 Use case:
+
+* Detect IO bottlenecks
+* High queue + latency = disk contention
+
+***
+
+### ✅ Network Metrics
+
+* `Network In`
+* `Network Out`
+* `Packets/sec`
+
+👉 Tricky scenario:
+Low traffic but high latency → upstream issue
+
+***
+
+# 🟢 2. App Services / Application Insights
+
+## ✅ Performance Metrics
+
+* `Request Duration`
+* `Requests per Second`
+* `Dependency Duration`
+
+👉 Golden Signal: **Latency**
+
+***
+
+## ✅ Failure Metrics
+
+* `Failed Requests`
+* `Exception Count`
+
+👉 Golden Signal: **Errors**
+
+***
+
+## ✅ Traffic Metrics
+
+* `Request Count`
+
+👉 Golden Signal: **Traffic**
+
+***
+
+## ✅ Availability
+
+* `Availability Results` (from synthetic tests)
+
+👉 Golden Signal: **Availability / SLO**
+
+***
+
+# 🟢 3. Kubernetes (AKS)
+
+## ✅ Node Metrics
+
+* `node_cpu_usage_percentage`
+* `node_memory_working_set`
+
+## ✅ Pod Metrics
+
+* `pod_cpu_usage`
+* `pod_memory_usage`
+* `pod_restarts_total`
+
+👉 Trick:
+
+* High restarts = crash loops
+* Memory close to limit = OOM risk
+
+***
+
+## ✅ Cluster Health
+
+* `node_not_ready`
+* `unschedulable_pods`
+
+***
+
+# 🟢 4. Storage (Blob / Disk)
+
+## ✅ Key Metrics
+
+* `Transactions`
+* `Availability`
+* `Success E2E Latency`
+* `Throttling Errors`
+
+👉 Trick:
+Throttling = hitting scalability limits
+
+***
+
+# 🟢 5. Azure SQL / Databases
+
+## ✅ Performance
+
+* `DTU Percentage` / `CPU Percentage`
+* `Data IO Percentage`
+* `Log IO Percentage`
+
+## ✅ Reliability
+
+* `Deadlocks`
+* `Connections`
+
+👉 Tricky:
+Deadlocks ≠ infra issue → app query design problem
+
+***
+
+# 🟢 6. Networking (Load Balancer / App Gateway)
+
+## ✅ Metrics
+
+* `Healthy Host Count`
+* `Unhealthy Host Count`
+* `Request Count`
+* `Backend Response Time`
+* `Failed Requests`
+
+👉 Trick:
+
+* Healthy hosts drop → app issue
+* Backend latency high → downstream issue
+
+***
+
+# 🟢 7. Identity (Azure Entra ID)
+
+## ✅ Sign-in Metrics (via Logs)
+
+* `Sign-in Success/Failures`
+* `Conditional Access Failures`
+* `MFA Required`
+
+👉 SRE + Security crossover:
+Detect anomalies / brute force attacks
+
+***
+
+# 🟢 8. Key SRE “Golden Signals” Mapping
+
+| Golden Signal | Azure Metrics                         |
+| ------------- | ------------------------------------- |
+| 🔵 Latency    | Request Duration, Dependency Duration |
+| 🔵 Traffic    | Request Count, Network In/Out         |
+| 🔵 Errors     | Failed Requests, Exceptions           |
+| 🔵 Saturation | CPU %, Memory %, Disk Queue           |
+
+***
+
+# 🔴 🔥 Tricky Interview Insights
+
+## ✅ 1. Metrics vs Logs Confusion
+
+* Metrics = numeric, time-series
+* Logs = detailed events
+
+👉 Answer:
+“Use metrics for alerts, logs for root cause”
+
+***
+
+## ✅ 2. Missing Metric Scenario
+
+Ex: Memory not visible
+
+👉 Correct answer:
+
+* Install Azure Monitor Agent
+* Enable guest-level metrics
+
+***
+
+## ✅ 3. Alert Misconfiguration Trap
+
+* Average vs Max confusion
+
+👉 Example:
+CPU spike missed because avg < threshold
+
+***
+
+## ✅ 4. Sampling Issues (App Insights)
+
+* Not all requests captured
+
+👉 Fix:
+
+* Increase sampling rate
+* Use adaptive sampling
+
+***
+
+## ✅ 5. Multi-Dimensional Metrics
+
+Metrics include:
+
+* Region
+* Instance
+* StatusCode
+
+👉 Use filtering → find root cause faster
+
+***
+
+# 🎯 What Interviewers Expect You To Say
+
+✅ Not just naming metrics, but:
+
+* What they indicate
+* How they correlate
+* How to alert on them
+* How to troubleshoot using them
+
+***
+
+
+Just tell 👍
